@@ -8,23 +8,6 @@ from mysql.connector import Error
 
 
 
-# --- Function to load model and scaler ---
-@st.cache_resource
-@st.cache_resource
-def load_model():
-    """
-    Loads the pre-trained LGBM model.
-    """
-    try:
-        with open('lgbm_model.pkl', 'rb') as model_file:
-            model = pickle.load(model_file)
-        return model
-    except FileNotFoundError as e:
-        st.error(f"Model file not found: {e}. Please ensure 'lgbm_model.pkl' is in the root directory.")
-        return None
-
-model = load_model()
-
 st.set_page_config(page_title="Loan Default Prediction App", layout="centered")
 
 st.title("💰 LoanWise Defaulter Prediction Project")
@@ -53,5 +36,6 @@ The prediction model used in this application is a pre-trained machine learning 
 
 st.markdown("---")
 st.markdown("Developed as a machine learning project.")
+
 
 
