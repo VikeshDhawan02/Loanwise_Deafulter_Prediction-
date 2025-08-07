@@ -221,7 +221,7 @@ if st.button("Predict Loan Default"):
             prediction_result = model.predict(model_input_df.values)[0]
 
             if prediction_result == 1:
-                st.error("Prediction: Customer is likely to **DEFAULT** on the loan.")
+                st.success("Prediction: Customer is likely to **DEFAULT** on the loan.")
             else:
                 st.success("Prediction: Customer is likely **NOT** to default on the loan.")
 
@@ -231,6 +231,7 @@ if st.button("Predict Loan Default"):
         except Exception as e:
             st.error(f"An error occurred during prediction: {e}")
             st.info("Please check if the model expects scaled input and if all required features are present.")
+
 
 
 
