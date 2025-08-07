@@ -29,4 +29,3 @@ The prediction model used in this application is a pre-trained machine learning 
 
 st.markdown("---")
 st.markdown("Developed as a machine learning project.")
-
