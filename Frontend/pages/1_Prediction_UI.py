@@ -131,7 +131,7 @@ def insert_prediction_into_db(input_data, prediction_result):
 # --- Streamlit UI ---
 st.set_page_config(page_title="Loan Default Prediction", layout="centered")
 
-st.title("💰 Loan Default Prediction Interface")
+st.title("Loan Default Prediction Interface")
 
 st.markdown("""
 Enter the details below to get a real-time prediction on the likelihood of a loan default.
@@ -221,9 +221,9 @@ if st.button("Predict Loan Default"):
             prediction_result = model.predict(model_input_df.values)[0]
 
             if prediction_result == 1:
-                st.error("🚨 Prediction: Customer is likely to **DEFAULT** on the loan.")
+                st.error("Prediction: Customer is likely to **DEFAULT** on the loan.")
             else:
-                st.success("✅ Prediction: Customer is likely **NOT** to default on the loan.")
+                st.success("Prediction: Customer is likely **NOT** to default on the loan.")
 
             # 4. Insert prediction into MySQL
             insert_prediction_into_db(input_data, prediction_result)
@@ -231,6 +231,7 @@ if st.button("Predict Loan Default"):
         except Exception as e:
             st.error(f"An error occurred during prediction: {e}")
             st.info("Please check if the model expects scaled input and if all required features are present.")
+
 
 
 
