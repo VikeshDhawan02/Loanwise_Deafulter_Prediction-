@@ -86,8 +86,8 @@ def insert_prediction_into_db(input_data, prediction_result):
         conn.commit()
         st.success("Prediction logged to database successfully!")
 
-    except Error as e:
-        st.error(f"Error while connecting to MySQL or inserting data: {e}")
+    # except Error as e:
+    #     st.error(f"Error while connecting to MySQL or inserting data: {e}")
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
@@ -239,4 +239,5 @@ elif page == "Tableau Dashboard":
     st.markdown("---")
 
     st.markdown("Dashboard created using Tableau.")
+
 
