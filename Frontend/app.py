@@ -48,7 +48,7 @@ label_map = {
 def load_model():
     """Loads the pre-trained LGBM model."""
     try:
-        with open('Fronted/lgbm_model.pkl', 'rb') as model_file:
+        with open('Frontend/lgbm_model.pkl', 'rb') as model_file:
             model = pickle.load(model_file)
         return model
     except FileNotFoundError as e:
@@ -239,3 +239,4 @@ elif page == "Tableau Dashboard":
     st.markdown("---")
 
     st.markdown("Dashboard created using Tableau.")
+
