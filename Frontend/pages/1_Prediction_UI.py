@@ -6,28 +6,8 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 
-
-
-# --- Function to load model and scaler ---
-@st.cache_resource
-@st.cache_resource
-def load_model():
-    """
-    Loads the pre-trained LGBM model.
-    """
-    try:
-        with open('lgbm_model.pkl', 'rb') as model_file:
-            model = pickle.load(model_file)
-        return model
-    except FileNotFoundError as e:
-        st.error(f"Model file not found: {e}. Please ensure 'lgbm_model.pkl' is in the root directory.")
-        return None
-
-model = load_model()
-
 # --- Configuration ---
 # MySQL connection config
-# Update these with your actual MySQL credentials
 db_config = {
     'host': 'localhost',
     'user': 'root',
@@ -36,7 +16,6 @@ db_config = {
 }
 
 # --- Updated field lists to match spark_cleaned_data.csv ---
-# These are the columns the model was trained on, with a total of 26 features
 model_input_fields = [
     'Age', 'Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed',
     'NumCreditLines', 'InterestRate', 'LoanTerm', 'DTIRatio', 'DebtAmount',
@@ -47,14 +26,11 @@ model_input_fields = [
     'Education_Bachelor', 'Education_Master', 'Education_PhD'
 ]
 
-# Numerical columns for scaling
 numerical_cols = [
     'Age', 'Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed',
     'NumCreditLines', 'InterestRate', 'LoanTerm', 'DTIRatio', 'DebtAmount'
 ]
 
-# Categorical mappings (from your balanced_data.py or similar)
-# This is crucial for displaying user-friendly options and converting back to numerical
 label_map = {
     'Education': {"Bachelor's": 'Bachelor', "Master's": 'Master', 'High School': 'HighSchool', 'PhD': 'PhD'},
     'EmploymentType': {'Full-time': 4, 'Unemployed': 0, 'Self-employed': 1, 'Part-time': 2},
@@ -65,47 +41,43 @@ label_map = {
     'HasCoSigner': {'Yes': 1, 'No': 0},
 }
 
+# Risk categories with thresholds
+RISK_CATEGORIES = {
+    'High Risk': (0.7, 1.0),
+    'Medium Risk': (0.4, 0.7),
+    'Low Risk': (0.1, 0.4),
+    'Minimal Risk': (0.0, 0.1)
+}
 
 # --- Function to load model and scaler ---
-# @st.cache_resource
-# @st.cache_resource
-# def load_model():
-#     """
-#     Loads the pre-trained LGBM model.
-#     """
-#     try:
-#         with open('lgbm_model.pkl', 'rb') as model_file:
-#             model = pickle.load(model_file)
-#         return model
-#     except FileNotFoundError as e:
-#         st.error(f"Model file not found: {e}. Please ensure 'lgbm_model.pkl' is in the root directory.")
-#         return None
+@st.cache_resource
+def load_model():
+    try:
+        with open('loan_default_lgbm_model.pkl', 'rb') as model_file:
+            model = pickle.load(model_file)
+        return model
+    except FileNotFoundError as e:
+        st.error(f"Model file not found: {e}. Please ensure 'loan_default_lgbm_model.pkl' is in the root directory.")
+        return None
 
-# model = load_model()
+model = load_model()
 
 # --- Function to insert prediction into MySQL database ---
-def insert_prediction_into_db(input_data, prediction_result):
-    """
-    Inserts the prediction data and result into the MySQL predictions table.
-    """
+def insert_prediction_into_db(input_data, prediction_prob, risk_category):
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
-        # The new table has more columns due to one-hot encoding
-        # You must have run the new CREATE TABLE query in MySQL for this to work
         columns = [
             'prediction_timestamp', 'Age', 'Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed',
             'NumCreditLines', 'InterestRate', 'LoanTerm', 'DTIRatio', 'DebtAmount', 'Education',
             'EmploymentType', 'MaritalStatus', 'HasMortgage', 'HasDependents',
-            'LoanPurpose', 'HasCoSigner', 'PredictionResult'
+            'LoanPurpose', 'HasCoSigner', 'PredictionProbability', 'RiskCategory'
         ]
         
-        # Prepare the data for insertion
         placeholders = ', '.join(['%s'] * len(columns))
         insert_query = f"INSERT INTO predictions_log ({', '.join(columns)}) VALUES ({placeholders})"
 
-        # Create a list of values to insert
         values_to_insert = [
             pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
             input_data['Age'], input_data['Income'], input_data['LoanAmount'],
@@ -114,7 +86,8 @@ def insert_prediction_into_db(input_data, prediction_result):
             input_data['DebtAmount'], input_data['Education'], input_data['EmploymentType'],
             input_data['MaritalStatus'], input_data['HasMortgage'], input_data['HasDependents'],
             input_data['LoanPurpose'], input_data['HasCoSigner'],
-            int(prediction_result)  # Explicitly cast to a Python integer
+            float(prediction_prob),
+            risk_category
         ]
 
         cursor.execute(insert_query, values_to_insert)
@@ -128,13 +101,20 @@ def insert_prediction_into_db(input_data, prediction_result):
             cursor.close()
             conn.close()
 
+# --- Function to determine risk category ---
+def get_risk_category(probability):
+    for category, (lower, upper) in RISK_CATEGORIES.items():
+        if lower <= probability < upper:
+            return category
+    return 'Unknown Risk'
+
 # --- Streamlit UI ---
 st.set_page_config(page_title="Loan Default Prediction", layout="centered")
 
-st.title("Loan Default Prediction Interface")
+st.title("Loan Default Risk Assessment")
 
 st.markdown("""
-Enter the details below to get a real-time prediction on the likelihood of a loan default.
+Enter the details below to assess the risk of loan default with probability scores.
 """)
 
 # Store user inputs
@@ -143,7 +123,6 @@ input_data = {}
 # --- User Input Widgets ---
 st.subheader("Financial & Personal Details")
 
-# Input fields for numerical features, including the new 'DebtAmount'
 col1, col2, col3 = st.columns(3)
 with col1:
     input_data['Age'] = st.number_input("Age", min_value=18, max_value=100, value=35)
@@ -174,18 +153,15 @@ with col5:
     input_data['HasDependents'] = st.selectbox("Has Dependents?", options=['No', 'Yes'])
     input_data['HasCoSigner'] = st.selectbox("Has Co-Signer?", options=['No', 'Yes'])
 
-
 # --- Prediction Button ---
-if st.button("Predict Loan Default"):
+if st.button("Assess Default Risk"):
     if model is None:
-        st.error("Cannot make prediction: Model or scaler not loaded.")
+        st.error("Cannot make prediction: Model not loaded.")
     else:
         # 1. Create a DataFrame for user input
         user_input_df = pd.DataFrame([input_data])
 
         # 2. Convert categorical inputs to the format the model expects
-        
-        # Initialize a dictionary for one-hot encoded and numerical values
         model_input = {field: 0 for field in model_input_fields}
 
         # Transfer numerical values directly
@@ -210,29 +186,67 @@ if st.button("Predict Loan Default"):
         model_input['HasDependents'] = label_map['HasDependents'][user_input_df['HasDependents'].iloc[0]]
         model_input['HasCoSigner'] = label_map['HasCoSigner'][user_input_df['HasCoSigner'].iloc[0]]
 
-
         # Create the final DataFrame for the model
         model_input_df = pd.DataFrame([model_input], columns=model_input_fields)
     
-
         # 3. Make prediction
         try:
-            # The model expects a 2D array, even for a single prediction
-            prediction_result = model.predict(model_input_df.values)[0]
-
-            if prediction_result == 1:
-                st.success("Prediction: Customer is likely to **DEFAULT** on the loan.")
-            else:
-                st.success("Prediction: Customer is likely **NOT** to default on the loan.")
-
+            # Get probability scores
+            probability = model.predict_proba(model_input_df.values)[0][1]
+            risk_category = get_risk_category(probability)
+            
+            # Display results with color coding
+            st.subheader("Risk Assessment Results")
+            
+            # Create a progress bar for visualization
+            st.progress(probability)
+            
+            # Display probability and risk category
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Default Probability", f"{probability*100:.2f}%")
+            with col2:
+                if risk_category == 'High Risk':
+                    st.error(f"Risk Category: {risk_category}")
+                elif risk_category == 'Medium Risk':
+                    st.warning(f"Risk Category: {risk_category}")
+                else:
+                    st.success(f"Risk Category: {risk_category}")
+            
+            # Provide interpretation
+            st.markdown("### Interpretation")
+            if risk_category == 'High Risk':
+                st.error("""
+                🚨 **High Risk Warning**: This applicant has a high probability of default. 
+                - Consider additional collateral or higher interest rates
+                - Recommend thorough manual review
+                - May require cosigner or additional guarantees
+                """)
+            elif risk_category == 'Medium Risk':
+                st.warning("""
+                ⚠️ **Medium Risk**: This applicant has moderate default risk.
+                - Standard underwriting procedures recommended
+                - May benefit from slightly higher interest rates
+                - Consider additional verification of income/employment
+                """)
+            elif risk_category == 'Low Risk':
+                st.info("""
+                ℹ️ **Low Risk**: This applicant has acceptable default risk.
+                - Standard loan terms appropriate
+                - Normal underwriting procedures
+                - Generally favorable candidate
+                """)
+            else:  # Minimal Risk
+                st.success("""
+                ✅ **Minimal Risk**: This applicant has very low default probability.
+                - Consider preferential rates/terms
+                - Fast-track approval possible
+                - Excellent candidate for loan
+                """)
+            
             # 4. Insert prediction into MySQL
-            insert_prediction_into_db(input_data, prediction_result)
+            insert_prediction_into_db(input_data, probability, risk_category)
 
         except Exception as e:
             st.error(f"An error occurred during prediction: {e}")
-            st.info("Please check if the model expects scaled input and if all required features are present.")
-
-
-
-
-
+            st.info("Please check if the model expects all required features to be present.")
