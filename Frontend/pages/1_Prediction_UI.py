@@ -53,7 +53,7 @@ RISK_CATEGORIES = {
 @st.cache_resource
 def load_model():
     try:
-        with open('loan_default_lgbm_model.pkl', 'rb') as model_file:
+        with open('Frontend/loan_default_lgbm_model.pkl', 'rb') as model_file:
             model = pickle.load(model_file)
         return model
     except FileNotFoundError as e:
@@ -249,4 +249,5 @@ if st.button("Assess Default Risk"):
 
         except Exception as e:
             st.error(f"An error occurred during prediction: {e}")
+
             st.info("Please check if the model expects all required features to be present.")
