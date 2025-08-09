@@ -27,9 +27,11 @@ streamlit run frontend.py
 
 # Data Used:
 The dataset was sourced from Kaggle and consists of 255,347 rows and 18 columns, covering demographic, financial, and behavioral attributes of loan applicants.
-Characteristics :
-•	8 Numeric Columns: Includes income, loan amount, interest rate, and credit score. 
-•	10 Categorical Columns: Includes employment type, education level, loan 
-purpose, and marital status.
+
+### Characteristics :
+
+•	8 Numeric Columns: Includes income, loan amount, interest rate, and credit score.
+
+•	10 Categorical Columns: Includes employment type, education level, loan purpose, and marital status.
 
 
