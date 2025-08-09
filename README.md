@@ -15,11 +15,14 @@ Pandas
 
 ## Launching the app
 Make sure that requirements are installed:
- pip install -r requirments.txt
+```bash
+pip install -r requirments.txt
+```
 
 Launch the app from terminal:
- streamlit run frontend.py
-
+ ```bash
+streamlit run frontend.py
+```
 
 
 # Data Used:
