@@ -34,12 +34,6 @@ def set_background(image_file):
 set_background('front.jpeg')
 
 
-
-
-
-
-
-
 # --- Configuration ---
 # MySQL connection config
 db_config = {
@@ -75,7 +69,7 @@ label_map = {
     'HasCoSigner': {'Yes': 1, 'No': 0},
 }
 
-# Risk categories with thresholds
+# Risk categories with thresholds values 
 RISK_CATEGORIES = {
     'High Risk': (0.7, 1.0),
     'Medium Risk': (0.4, 0.7),
@@ -83,7 +77,7 @@ RISK_CATEGORIES = {
     'Minimal Risk': (0.0, 0.1)
 }
 
-# --- Function to load model and scaler ---
+# Function to load model (i.e pkl file)and scaler 
 @st.cache_resource
 def load_model():
     try:
@@ -96,7 +90,7 @@ def load_model():
 
 model = load_model()
 
-# --- Function to insert prediction into MySQL database ---
+# Function to insert prediction into MySQL database
 def insert_prediction_into_db(input_data, prediction_prob, risk_category):
     try:
         conn = mysql.connector.connect(**db_config)
@@ -135,14 +129,14 @@ def insert_prediction_into_db(input_data, prediction_prob, risk_category):
             cursor.close()
             conn.close()
 
-# --- Function to determine risk category ---
+# Function to determine risk category 
 def get_risk_category(probability):
     for category, (lower, upper) in RISK_CATEGORIES.items():
         if lower <= probability < upper:
             return category
     return 'Unknown Risk'
 
-# --- Streamlit UI ---
+# Streamlit UI 
 st.set_page_config(page_title="Loan Default Prediction", layout="centered")
 
 st.title("Loan Default Risk Assessment")
@@ -154,7 +148,7 @@ Enter the details below to assess the risk of loan default with probability scor
 # Store user inputs
 input_data = {}
 
-# --- User Input Widgets ---
+# User Input Widgets
 st.subheader("Financial & Personal Details")
 
 col1, col2, col3 = st.columns(3)
@@ -285,3 +279,4 @@ if st.button("Assess Default Risk"):
             st.error(f"An error occurred during prediction: {e}")
 
             st.info("Please check if the model expects all required features to be present.")
+
